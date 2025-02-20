@@ -1,34 +1,236 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>My Website</title>
-
-    <style>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>To-Do List</title>
+    <!-- <link rel="stylesheet" href="style.css"> -->
+     <style>
       body {
-        font-family: Arial, sans-serif;
-        text-align: center;
-        margin: 50px;
-      }
+    font-family: Arial, sans-serif;
+    background-color: #f4f7fa;
+    margin: 0;
+    padding: 0;
+}
+.container {
+    max-width: 500px;
+    margin: auto;
+    padding: 20px;
+    background-color: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    margin-top: 50px;
+}
+h2 {
+    text-align: center;
+    color: #333;
+}
+input[type="text"] {
+    width: 70%;
+    padding: 10px;
+    margin-right: 10px;
+    border-radius: 4px;
+    border: 1px solid #ccc;
+    font-size: 16px;
+}
+button {
+    background-color: #4CAF50;
+    color: white;
+    padding: 10px 20px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 16px;
+}
+button:hover {
+    background-color: #45a049;
+}
+button:active {
+    background-color: #388e3c;
+}
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 20px;
+}
+th, td {
+    padding: 12px;
+    border: 1px solid #ddd;
+    text-align: left;
+}
+th {
+    background-color: #f1f1f1;
+    color: #333;
+}
+td {
+    background-color: #fafafa;
+}
+td button {
+    background-color: #f44336;
+    color: white;
+    padding: 5px 10px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+}
+td button:hover {
+    background-color: #e53935;
+}
+input.edit-input {
+    width: 70%;
+    padding: 8px;
+    border-radius: 4px;
+    border: 1px solid #ccc;
+}
+#error {
+    color: red;
+    text-align: center;
+}
 
-      button {
-        background-color: blue;
-        color: white;
-        padding: 10px 20px;
-        border: none;
-        cursor: pointer;
-      }
-    </style>
-  </head>
-  <body>
-    <h1>Welcome to My Website</h1>
-    <button onclick="showMessage()">Click Me</button>
-    <p id="message"></p>
+/* Responsive styling */
+@media (max-width: 600px) {
+    .container {
+        padding: 15px;
+        margin-top: 20px;
+    }
+    input[type="text"] {
+        width: 60%;
+    }
+    button {
+        width: 35%;
+    }
+    table {
+        font-size: 14px;
+    }
+}
+     </style>
+</head>
+<body>
+    <div class="container">
+        <h2>To-Do List</h2>
+        <input type="text" id="taskInput" placeholder="Enter the task" required>
+        <button class="add" onclick="addTask()">Add</button>
+        <p id="error" style="color: red;"></p>
+        <table border="1">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Task</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody id="taskList"></tbody>
+        </table>
+    </div>
+
     <script>
-      function showMessage() {
-        document.getElementById("message").innerText = "Hello, GitHub Pages!";
-      }
+      let taskId = 1;
+
+const getTasks = () => {
+    console.log("getTasks clicked 3");
+    let tasks = [];
+    try {
+        let storedTasks = JSON.parse(localStorage.getItem("tasks")) || [];
+        storedTasks.forEach(task => {
+            task.id % 2 !== 0 && (task.text = getCookie(task.id) || task.text);
+        });
+        tasks = storedTasks;
+
+        document.cookie.split(';').forEach(a => {
+            let [key, value] = a.split('=').map(c => c.trim());
+            let id = key.startsWith('task_') ? parseInt(key.replace('task_', '')) : null;
+            if (id && !tasks.some(t => t.id === id)) {
+                tasks.push({ id, text: value });
+            }
+        });
+    } catch (e) {
+        console.error("Error retrieving tasks", e);
+    }
+    return tasks.sort((a, b) => a.id - b.id);
+};
+
+const saveTasks = (tasks) => {
+    console.log("saveTasks clicked 4");
+    localStorage.setItem("tasks", JSON.stringify(tasks.filter(t => t.id % 2 === 0)));
+};
+
+const setCookie = (id, value) => {
+    document.cookie = `task_${id}=${value}; path=/; max-age=31536000;`;
+};
+
+const getCookie = (id) => {
+    let name = `task_${id}=`;
+    let cookies = document.cookie.split(';');
+    for (let cookie of cookies) {
+        cookie = cookie.trim();
+        if (cookie.startsWith(name)) {
+            return cookie.substring(name.length);
+        }
+    }
+    return "";
+};
+
+const deleteTask = (id) => {
+    console.log("deleteTask clicked 6");
+    let tasks = getTasks().filter(t => t.id !== id);
+    saveTasks(tasks);
+    document.cookie = `task_${id}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`;
+    taskId = tasks.length > 0 ? Math.max(...tasks.map(t => t.id)) + 1 : 1;
+    renderTasks();
+};
+
+const addTask = () => {
+    console.log("Add task clicked 1");
+    let input = document.getElementById("taskInput").value.trim();
+    let error = document.getElementById("error");
+    input ? (error.textContent = "", createTask(input)) : error.textContent = "Task cannot be empty";
+};
+
+const createTask = (input) => {
+    console.log("created task click 2");
+    let tasks = getTasks();
+    let task = { id: taskId++, text: input };
+    tasks.push(task);
+    task.id % 2 === 0 ? saveTasks(tasks) : setCookie(task.id, task.text);
+    document.getElementById("taskInput").value = "";
+    renderTasks();
+};
+
+const editTask = (id) => {
+    console.log("editTask clicked 5");
+    let cell = document.getElementById(`task-${id}`);
+    cell.innerHTML = `<input type='text' class='edit-input' id='edit-${id}' value='${cell.innerText}'>
+                      <button onclick='saveEdit(${id})'>Save</button>`;
+};
+
+const saveEdit = (id) => {
+    console.log("saveEdit clicked 7");
+    let tasks = getTasks();
+    let task = tasks.find(t => t.id === id);
+    let newText = document.getElementById(`edit-${id}`).value.trim();
+
+    if (task && newText) {
+        task.text = newText;
+        task.id % 2 === 0 ? saveTasks(tasks) : setCookie(task.id, task.text);
+    }
+    
+    renderTasks();
+};
+
+const renderTasks = () => {
+    let taskList = document.getElementById("taskList");
+    taskList.innerHTML = getTasks().map(task => `<tr>
+        <td>${task.id}</td>
+        <td id='task-${task.id}'>${task.text}</td>
+        <td>
+            <button onclick="editTask(${task.id})">Edit</button>
+            <button onclick="deleteTask(${task.id})">Delete</button>
+        </td>
+    </tr>`).join('');
+};
+
+renderTasks();
+
     </script>
-  </body>
+</body>
 </html>
